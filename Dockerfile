@@ -1,37 +1,50 @@
 FROM centos
-MAINTAINER Kunihiro Tanaka <tanaka@sakura.ad.jp>
+MAINTAINER @supertaihei02
 
-RUN yum update -y
-RUN wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm ;\
-    wget http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm ;\
-    wget http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm ;\
-    rpm -ivh epel-release-6-8.noarch.rpm remi-release-6.rpm rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
-ADD td.repo /etc/yum.repos.d/td.repo
-RUN yum --enablerepo=remi,epel,treasuredata install sudo openssh-server syslog httpd httpd-devel php php-devel php-pear php-mysql php-gd php-mbstring php-pecl-imagick php-pecl-memcache monit td-agent mysql-server phpmyadmin -y
+ENV TIMEZONE Asia/Tokyo
+ENV LOGINUSER guest
+ENV LOGINPW loginpassword
 
-ADD monit.httpd /etc/monit.d/httpd
-ADD monit.sshd /etc/monit.d/sshd
-ADD monit.td-agent /etc/monit.d/td-agent
-ADD monit.mysqld /etc/monit.d/mysqld
-ADD td-agent.conf /etc/td-agent/td-agent.conf
-ADD monit.conf /etc/monit.conf
-RUN chown -R root:root /etc/monit.d/ /etc/td-agent/td-agent.conf /etc/monit.conf
-RUN chmod -R 600 /etc/td-agent/td-agent.conf /etc/monit.conf
+RUN echo ZONE="$TIMEZONE" > /etc/sysconfig/clock && \
+    cp "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+RUN yum update -y && \
+    rpm -ivh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm && \
+    rpm -ivh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
 
-RUN sed -ri 's/^UsePAM yes/#UsePAM yes/' /etc/ssh/sshd_config
-RUN sed -ri 's/^#UsePAM no/UsePAM no/' /etc/ssh/sshd_config
-RUN sed -rie "9i Allow from __YOUR_IP_ADDRESS_HERE__" /etc/httpd/conf.d/phpmyadmin.conf
-RUN sed -ri 's/%%IPADDRESS%%/__YOUR_IP_ADDRESS_HERE__/' /etc/monit.conf
-RUN sed -ri "s/cfg\['blowfish_secret'\] = ''/cfg['blowfish_secret'] = '`uuidgen`'/" /usr/share/phpmyadmin/config.inc.php
+# system.
+RUN yum -y --enablerepo=remi,remi-php55 install sudo openssh-server syslog ntp
+RUN sed -ri "s/^UsePAM yes/#UsePAM yes/" /etc/ssh/sshd_config
+RUN sed -ri "s/^#UsePAM no/UsePAM no/" /etc/ssh/sshd_config
+RUN mkdir -m 700 /root/.ssh
+RUN useradd $LOGINUSER && echo "$LOGINUSER:LOGINPW" | chpasswd
+RUN echo "$LOGINUSER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$LOGINUSER
+RUN service sshd start
+RUN chkconfig sshd on
 
+# httpd
+RUN yum -y --enablerepo=remi,remi-php55 install httpd httpd-devel
 RUN chmod 755 /var/log/httpd
 RUN touch /etc/sysconfig/network
+RUN chkconfig httpd on
 
-RUN mkdir -m 700 /root/.ssh
-ADD authorized_keys /root/.ssh/authorized_keys
+# php5
+RUN yum -y --enablerepo=remi,remi-php55 install php php-devel php-pear php-gd php-mbstring
+RUN service httpd start
 
-RUN useradd lamp && echo 'lamp:lamp-User' | chpasswd
-RUN echo 'lamp ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/lamp
-
+# mysql
+RUN yum -y --enablerepo=remi,remi-php55 install mysql-server php-mysql
 RUN service mysqld start && \
-    /usr/bin/mysqladmin -u root password '__MYSQL_PASSWORD_HERE__'
+    /usr/bin/mysqladmin -u root password "LOGINPW"
+RUN chkconfig mysqld on
+
+#monit
+RUN yum -y --enablerepo=remi install monit
+ADD monit/monit.sshd /etc/monit.d/sshd
+ADD monit/monit.httpd /etc/monit.d/httpd
+ADD monit/monit.mysqld /etc/monit.d/mysqld
+ADD monit/monit.conf /etc/monit.conf
+RUN mkdir /var/monit && chmod -R 600 /etc/monit.conf
+
+EXPOSE 22 80 2812
+
+CMD ["/usr/bin/monit", "-I"]

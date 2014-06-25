@@ -1,54 +1,50 @@
 docker-centos-lamp
 ==================
 
-LAMP with CentOS
+Contains.
+* Apache
+* MySQL
+* PHP(5.5)
 
-Make a LAMP environment using the Docker.
 
-### 1. Please correct the file to suit your environment
+### 1. Set your timezone, loginaccount to Dockerfile
 
- - authorized_keys
- 
-   Your public key
+ - Dockerfile
 
- - monit.conf
- 
-   Your IP address to allow
-  ```
-set httpd port 2812 and
-    allow localhost        # allow localhost to connect to the server and
-    allow **Your IP address here**
-    allow admin:monit      # require user 'admin' with password 'monit'
-    allow @monit           # allow users of group 'monit' to connect (rw)
-    allow @users readonly  # allow users of group 'users' to connect readonly
-```
-
- - td-agent.conf
- 
-   Your log server's IP address
-  ```
-<match http.app.**>
-  type forward
-  <server>
-  host **Your log server's IP address here**
-  </server>
-  flush_interval 2s
-</match>
+   ```
+   ENV TIMEZONE Asia/Tokyo
+   ENV LOGINUSER guest
+   ENV LOGINPW loginpassword
 ```
 
 ### 2. Build docker image
 
 ```sh
-  % sudo docker build -t centos-lamp -rm=true .
-  % sudo docker images
-  REPOSITORY               TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
-  centos-lamp              latest              8a8b20fd03c2        23 minutes ago      1.035 GB
+  # docker build -t centos:lamp .
+  # docker images
+  REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+  centos              lamp                0e15f4cf4d07        23 hours ago        562.9 MB
 ```
 
 ### 3. Run docker container
 
 ```sh
-  % sudo docker run -d -t -p 12812:2812 -p 10080:80 -p 10022:22 centos-lamp /usr/bin/monit -I
- 9c796ab91f7d79259811b0343978ef1354a57b38e43a64d8bb83b4148aad28a0
-  % curl http://localhost:10080/
+  # docker run -d -t -p 12812:2812 -p 10080:80 -p 10022:22 centos:lamp
+  # docker ps -a
+  CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS                                                                   NAMES
+  d2d958f98834        centos:lemp         /usr/bin/monit -I   2 hours ago         Up 2 hours          0.0.0.0:10022->22/tcp, 0.0.0.0:10080->80/tcp, 0.0.0.0:12812->2812/tcp   sick_hypatia
+```
+
+### 4. Access from local
+
+* monit
+http://$DOCKER_HOST_IP:12812/
+
+* With Browser
+Prace htdocs on Apache Web Root(/var/www/html).
+http://$DOCKER_HOST_IP:10080/
+
+* With ssh
+```sh
+  $ ssh -p 10022 -l guest $DOCKER_HOST_IP
 ```
