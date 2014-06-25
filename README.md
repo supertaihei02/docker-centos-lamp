@@ -6,7 +6,6 @@ Contains.
 * MySQL
 * PHP(5.5)
 
-
 ### 1. Set your timezone, loginaccount to Dockerfile
 
  - Dockerfile
@@ -35,16 +34,20 @@ Contains.
   d2d958f98834        centos:lemp         /usr/bin/monit -I   2 hours ago         Up 2 hours          0.0.0.0:10022->22/tcp, 0.0.0.0:10080->80/tcp, 0.0.0.0:12812->2812/tcp   sick_hypatia
 ```
 
-### 4. Access from local
+### 4. Access
 
-* monit
+###### monit
+```
 http://$DOCKER_HOST_IP:12812/
+```
 
-* With Browser
-Prace htdocs on Apache Web Root(/var/www/html).
+###### With Browser
+Place your website to webroot(/var/www/html).
+```
 http://$DOCKER_HOST_IP:10080/
+```
 
-* With ssh
+###### With ssh
 ```sh
   $ ssh -p 10022 -l guest $DOCKER_HOST_IP
 ```
