@@ -16,7 +16,7 @@ RUN yum -y --enablerepo=remi,remi-php55 install sudo openssh-server syslog ntp
 RUN sed -ri "s/^UsePAM yes/#UsePAM yes/" /etc/ssh/sshd_config
 RUN sed -ri "s/^#UsePAM no/UsePAM no/" /etc/ssh/sshd_config
 RUN mkdir -m 700 /root/.ssh
-RUN useradd $LOGINUSER && echo "$LOGINUSER:LOGINPW" | chpasswd
+RUN useradd $LOGINUSER && echo "$LOGINUSER:$LOGINPW" | chpasswd
 RUN echo "$LOGINUSER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$LOGINUSER
 RUN service sshd start
 RUN chkconfig sshd on
@@ -34,7 +34,7 @@ RUN service httpd start
 # mysql
 RUN yum -y --enablerepo=remi,remi-php55 install mysql-server php-mysql
 RUN service mysqld start && \
-    /usr/bin/mysqladmin -u root password "LOGINPW"
+    /usr/bin/mysqladmin -u root password "$LOGINPW"
 RUN chkconfig mysqld on
 
 #monit
